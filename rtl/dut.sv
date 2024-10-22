@@ -66,9 +66,8 @@ wire input_col_itr_sel;
 wire weight_dim_itr_sel;
 wire k_itr_sel;
 
-//---------------------------------------------------------------------------
+/*------------------------Control Logic---------------------------------*/
 //FSM registers for q_input_state
-
 `ifndef FSM_BIT_WIDTH
   `define FSM_BIT_WIDTH 4
 `endif
@@ -94,53 +93,71 @@ end
 
 /*----------------Dimension Counts------------------*/
 // No. of input rows
-always @(posedge clock) begin
-  if(!input_rows_sel)
-    input_rows <= tb__dut__sram_input_read_data[16:31]; // No. of rows is in input0[31:16]
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    input_rows <= 0;
   else
-    input_rows <= input_rows;
+    if(!input_rows_sel)
+      input_rows <= tb__dut__sram_input_read_data[16:31]; // No. of rows is in input0[31:16]
+    else
+      input_rows <= input_rows;
 end
 
 // No. of input cols
-always @(posedge clock) begin
-  if(!input_cols_sel)
-    input_cols <= tb__dut__sram_input_read_data[15:0]; // No. of cols is in input0[15:0]
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    input_cols <= 0;
   else
-    input_cols <= input_cols;
+    if(!input_cols_sel)
+      input_cols <= tb__dut__sram_input_read_data[15:0]; // No. of cols is in input0[15:0]
+    else
+      input_cols <= input_cols;
 end
 
 // No. of weight cols
-always @(posedge clock) begin
-  if(!weight_cols_sel)
-    weight_cols <= tb__dut__sram_weight_read_data[15:0]; // No. of cols is in weight0[15:0]
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    weight_cols <= 0;
   else
-    weight_cols <= weight_cols;
+    if(!weight_cols_sel)
+      weight_cols <= tb__dut__sram_weight_read_data[15:0]; // No. of cols is in weight0[15:0]
+    else
+      weight_cols <= weight_cols;
 end
 
 // Weight Matrix Dimension
-always @(posedge clock) begin
-  if(!weight_dim_sel)
-    weight_dim <= (tb__dut__sram_weight_read_data[15:0] * tb__dut__sram_weight_read_data[31:16]); // Dim = weight0[15:0] * weight0[31:16]
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    weight_dim <= 0;
   else
-    weight_dim <= weight_dim;
+    if(!weight_dim_sel)
+      weight_dim <= (tb__dut__sram_weight_read_data[15:0] * tb__dut__sram_weight_read_data[31:16]); // Dim = weight0[15:0] * weight0[31:16]
+    else
+      weight_dim <= weight_dim;
 end
 
 /*----------------Iterators------------------*/
 // Input column iterator
-always @(posedge clock) begin
-  if(!input_col_itr_sel)
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
     input_col_itr <= 0;
   else
-    input_col_itr <= input_col_itr + 1'b1;
+    if(!input_col_itr_sel)
+      input_col_itr <= 0;
+    else
+      input_col_itr <= input_col_itr + 1'b1;
 end
 assign input_col_itr_sel = ((input_col_itr+1) == input_cols);
 
 // Weight Dimension iterator
-always @(posedge clock) begin
-  if(!weight_dim_itr_sel)
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
     weight_dim_itr <= 0;
   else
-    weight_dim_itr <= weight_dim_itr + 1'b1;
+    if(!weight_dim_itr_sel)
+      weight_dim_itr <= 0;
+    else
+      weight_dim_itr <= weight_dim_itr + 1'b1;
 end
 assign weight_dim_itr_sel = ((weight_dim_itr+1) == weight_dim);
 
@@ -148,33 +165,41 @@ assign weight_dim_itr_sel = ((weight_dim_itr+1) == weight_dim);
 always @(posedge clock or negedge reset_n) begin
   if(!reset_n)
     k_itr <= 0;
-
-  if(k_itr_sel)
-    k_itr <= k_itr + 1'b1;
   else
-    k_itr <= k_itr;
+    if(k_itr_sel)
+      k_itr <= k_itr + 1'b1;
+    else
+      k_itr <= k_itr;
 end
 assign k_itr_sel = ((weight_dim_itr+1) == weight_dim);
 
 /*----------------Matrices------------------*/
 // For input matrix
-always @(posedge clock) begin
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    input_read_address_r <= 0;
+  else
   if(load_input_zero)
     input_read_address_r <= 0;
-  else if()
-
+  else if(input_col_itr_sel)
+    input_read_address_r <= (input_cols * k_itr) + 1'b1;
+  else
+    input_read_address_r <= input_read_address_r + 1'b1;
 end
-
 assign dut__tb__sram_input_read_address = input_read_address_r;
 
 // For weight matrix
 always @(posedge clock) begin
+  if(!reset_n)
+    weight_read_address_r <= 0;
+  else
   if(load_weight_zero)
     weight_read_address_r <= 0;
-  else if()
-
+  else if(weight_dim_itr_sel)
+    weight_read_address_r <= 1;
+  else
+    weight_read_address_r <= weight_read_address_r + 1'b1;
 end
-
 assign dut__tb__sram_weight_read_address = weight_read_address_r;
 
 DW_fp_mac_inst 
