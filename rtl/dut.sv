@@ -73,9 +73,9 @@ reg input_cols_sel;
 reg weight_cols_sel;
 reg weight_dim_sel;
 
-wire input_col_itr_sel;
-wire weight_dim_itr_sel;
-wire k_itr_sel;
+reg input_col_itr_sel;
+reg weight_dim_itr_sel;
+reg k_itr_sel;
 
 reg input_r_enable;
 reg weight_r_enable;
@@ -84,6 +84,8 @@ reg input_enable;
 reg weight_enable;
 reg accum_select;
 
+reg compute_complete;
+reg set_dut_ready;
 /*------------------------Control Logic---------------------------------*/
 //FSM registers for q_input_state
 `ifndef FSM_BIT_WIDTH
@@ -107,6 +109,65 @@ always @(posedge clock or negedge reset_n) begin
     current_state <= IDLE;
   else
     current_state <= next_state;
+end
+
+// Handshake logic
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    compute_complete <= 0;
+  else
+    compute_complete <= (set_dut_ready) ? 1'b1 : 1'b0;
+end
+assign dut_ready = compute_complete;
+
+/*----------------FSM------------------*/
+always @(*) begin
+
+  set_dut_ready = 1'b0;
+
+  load_input_zero = 1'b0;
+  load_weight_zero = 1'b0;
+
+  input_rows_sel = 1'b1;
+  input_cols_sel = 1'b1;
+  weight_cols_sel = 1'b1;
+  weight_dim_sel = 1'b1;
+
+  input_col_itr_sel = 1'b1;
+  weight_dim_itr_sel = 1'b1;
+  k_itr_sel = 1'b0;
+
+  case (current_state)
+    IDLE: begin
+      if(dut_valid) begin
+        next_state = S0;
+      end
+      else begin
+        set_dut_ready = 1'b1;
+        next_state = IDLE;
+      end
+    end
+    S0: begin
+      load_input_zero = 1'b1;
+      load_weight_zero = 1'b1;
+      next_state = S1;
+    end
+    S1: begin
+      input_col_itr_sel = 1'b0;
+      weight_dim_itr_sel = 1'b0;
+      next_state = S2;      
+    end
+    S2: begin
+      input_col_itr_sel = ((input_col_itr+1) == input_cols);
+      weight_dim_itr_sel = ((weight_dim_itr+1) == weight_dim);
+      k_itr_sel = ((weight_dim_itr+1) == weight_dim);
+      input_rows_sel = 1'b0;
+      input_cols_sel = 1'b0;
+      weight_cols_sel = 1'b0;
+      weight_dim_sel = 1'b0;
+      next_state = S3;      
+    end
+  endcase
 end
 
 /*----------------Dimension Counts------------------*/
@@ -165,7 +226,6 @@ always @(posedge clock or negedge reset_n) begin
     else
       input_col_itr <= input_col_itr + 1'b1;
 end
-assign input_col_itr_sel = ((input_col_itr+1) == input_cols);
 
 // Weight Dimension iterator
 always @(posedge clock or negedge reset_n) begin
@@ -177,7 +237,6 @@ always @(posedge clock or negedge reset_n) begin
     else
       weight_dim_itr <= weight_dim_itr + 1'b1;
 end
-assign weight_dim_itr_sel = ((weight_dim_itr+1) == weight_dim);
 
 // K iterator: Whenever weight matrix is fully traversed K++
 always @(posedge clock or negedge reset_n) begin
@@ -189,7 +248,6 @@ always @(posedge clock or negedge reset_n) begin
     else
       k_itr <= k_itr;
 end
-assign k_itr_sel = ((weight_dim_itr+1) == weight_dim);
 
 /*----------------Read Address------------------*/
 // For input
