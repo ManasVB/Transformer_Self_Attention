@@ -60,7 +60,7 @@ reg[`SRAM_DATA_RANGE] weight_r;
 reg[`SRAM_DATA_RANGE] result_w;
 
 // After input enable is set to 1 send the data read from SRAM to these registers for calculations
-reg[`SRAM_DATA_RANGE] input;
+reg[`SRAM_DATA_RANGE] inputt;
 reg[`SRAM_DATA_RANGE] weight;
 reg[`SRAM_DATA_RANGE] accum;
 
@@ -96,15 +96,15 @@ typedef enum logic [`FSM_BIT_WIDTH-1:0] {
   IDLE = `FSM_BIT_WIDTH'b0000,
   S0 = `FSM_BIT_WIDTH'b0001,
   S1 = `FSM_BIT_WIDTH'b0011,
-  S3 = `FSM_BIT_WIDTH'b0100,
-  S4 = `FSM_BIT_WIDTH'b0101,
-  S5 = `FSM_BIT_WIDTH'b0110,
+  S2 = `FSM_BIT_WIDTH'b0100,
+  S3 = `FSM_BIT_WIDTH'b0101,
+  S4 = `FSM_BIT_WIDTH'b0110
 } e_states;
 
 e_states current_state, next_state;
 
 // Control Path
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     current_state <= IDLE;
   else
@@ -112,7 +112,7 @@ always @(posedge clock or negedge reset_n) begin
 end
 
 // Handshake logic
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     compute_complete <= 0;
   else
@@ -208,18 +208,18 @@ end
 
 /*----------------Dimension Counts------------------*/
 // No. of input rows
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     input_rows <= 0;
   else
     if(!input_rows_sel)
-      input_rows <= input_r[16:31]; // No. of rows is in input0[31:16]
+      input_rows <= input_r[31:16]; // No. of rows is in input0[31:16]
     else
       input_rows <= input_rows;
 end
 
 // No. of input cols
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     input_cols <= 0;
   else
@@ -230,7 +230,7 @@ always @(posedge clock or negedge reset_n) begin
 end
 
 // No. of weight cols
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     weight_cols <= 0;
   else
@@ -241,7 +241,7 @@ always @(posedge clock or negedge reset_n) begin
 end
 
 // Weight Matrix Dimension
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     weight_dim <= 0;
   else
@@ -253,7 +253,7 @@ end
 
 /*----------------Iterators------------------*/
 // Input column iterator
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     input_col_itr <= 0;
   else
@@ -264,7 +264,7 @@ always @(posedge clock or negedge reset_n) begin
 end
 
 // Weight Dimension iterator
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     weight_dim_itr <= 0;
   else
@@ -275,7 +275,7 @@ always @(posedge clock or negedge reset_n) begin
 end
 
 // K iterator: Whenever weight matrix is fully traversed K++
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     k_itr <= 0;
   else
@@ -287,7 +287,7 @@ end
 
 /*----------------Read Address------------------*/
 // For input
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     input_read_address_r <= 0;
   else
@@ -301,7 +301,7 @@ end
 assign dut__tb__sram_input_read_address = input_read_address_r;
 
 // For weight
-always @(posedge clock) begin
+always @(posedge clk) begin
   if(!reset_n)
     weight_read_address_r <= 0;
   else
@@ -316,7 +316,7 @@ assign dut__tb__sram_weight_read_address = weight_read_address_r;
 
 /*----------------Read SRAM Data------------------*/
 // For input
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     input_r <= 0;
   else
@@ -327,7 +327,7 @@ always @(posedge clock or negedge reset_n) begin
 end
 
 // For Weight
-always @(posedge clock or negedge reset_n) begin
+always @(posedge clk or negedge reset_n) begin
   if(!reset_n)
     weight_r <= 0;
   else
@@ -339,7 +339,7 @@ end
 
 // /*----------------Math------------------*/
 // // For input
-// always @(posedge clock or negedge reset_n) begin
+// always @(posedge clk or negedge reset_n) begin
 //   if(!reset_n)
 //     input <= 0;
 //   else
@@ -350,7 +350,7 @@ end
 // end
 
 // // For weight
-// always @(posedge clock or negedge reset_n) begin
+// always @(posedge clk or negedge reset_n) begin
 //   if(!reset_n)
 //     weight <= 0;
 //   else
@@ -361,7 +361,7 @@ end
 // end
 
 // // For accumulator
-// always @(posedge clock or negedge reset_n) begin
+// always @(posedge clk or negedge reset_n) begin
 //   if(!reset_n)
 //     accum <= 0;
 //   else
@@ -383,7 +383,7 @@ DW_fp_mac_inst
 
 // /*----------------Write SRAM Data------------------*/
 // // Address
-// always @(posedge clock or negedge reset_n) begin
+// always @(posedge clk or negedge reset_n) begin
 //   if(!reset_n)
 //     result_write_address_w <= 0;
 //   else
@@ -395,7 +395,7 @@ DW_fp_mac_inst
 // assign dut__tb__sram_result_write_address = result_write_address_w;
 
 // // Data
-// always @(posedge clock or negedge reset_n) begin
+// always @(posedge clk or negedge reset_n) begin
 //   if(!reset_n)
 //     result_w <= 0;
 //   else
