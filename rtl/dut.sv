@@ -41,6 +41,7 @@ module MyDesign(
 // SRAM interface
 reg [`SRAM_ADDR_RANGE]  input_read_address_r;
 reg [`SRAM_ADDR_RANGE]  weight_read_address_r;
+reg [`SRAM_ADDR_RANGE]  result_write_address_w;
 
 `define DATA_DIM_WIDTH (`SRAM_DATA_WIDTH >> 1)  // eg. if data range is 32 bits, only 16 bits represent row/col size
 
@@ -52,6 +53,16 @@ reg[`SRAM_DATA_RANGE] weight_dim;
 reg[`DATA_DIM_WIDTH-1 : 0]  input_col_itr;
 reg[`SRAM_DATA_RANGE] weight_dim_itr;
 reg[`DATA_DIM_WIDTH-1 : 0]  k_itr;
+
+// Read input and weight from SRAM in the next cycle after addr is read
+reg[`SRAM_DATA_RANGE] input_r;
+reg[`SRAM_DATA_RANGE] weight_r;
+reg[`SRAM_DATA_RANGE] result_w;
+
+// After input enable is set to 1 send the data read from SRAM to these registers for calculations
+reg[`SRAM_DATA_RANGE] input;
+reg[`SRAM_DATA_RANGE] weight;
+reg[`SRAM_DATA_RANGE] accum;
 
 // Local control variables
 reg load_input_zero;
@@ -65,6 +76,13 @@ reg weight_dim_sel;
 wire input_col_itr_sel;
 wire weight_dim_itr_sel;
 wire k_itr_sel;
+
+reg input_r_enable;
+reg weight_r_enable;
+
+reg input_enable;
+reg weight_enable;
+reg accum_select;
 
 /*------------------------Control Logic---------------------------------*/
 //FSM registers for q_input_state
@@ -98,7 +116,7 @@ always @(posedge clock or negedge reset_n) begin
     input_rows <= 0;
   else
     if(!input_rows_sel)
-      input_rows <= tb__dut__sram_input_read_data[16:31]; // No. of rows is in input0[31:16]
+      input_rows <= input_r[16:31]; // No. of rows is in input0[31:16]
     else
       input_rows <= input_rows;
 end
@@ -109,7 +127,7 @@ always @(posedge clock or negedge reset_n) begin
     input_cols <= 0;
   else
     if(!input_cols_sel)
-      input_cols <= tb__dut__sram_input_read_data[15:0]; // No. of cols is in input0[15:0]
+      input_cols <= input_r[15:0]; // No. of cols is in input0[15:0]
     else
       input_cols <= input_cols;
 end
@@ -120,7 +138,7 @@ always @(posedge clock or negedge reset_n) begin
     weight_cols <= 0;
   else
     if(!weight_cols_sel)
-      weight_cols <= tb__dut__sram_weight_read_data[15:0]; // No. of cols is in weight0[15:0]
+      weight_cols <= weight_r[15:0]; // No. of cols is in weight0[15:0]
     else
       weight_cols <= weight_cols;
 end
@@ -131,7 +149,7 @@ always @(posedge clock or negedge reset_n) begin
     weight_dim <= 0;
   else
     if(!weight_dim_sel)
-      weight_dim <= (tb__dut__sram_weight_read_data[15:0] * tb__dut__sram_weight_read_data[31:16]); // Dim = weight0[15:0] * weight0[31:16]
+      weight_dim <= (weight_r[15:0] * weight_r[31:16]); // Dim = weight0[15:0] * weight0[31:16]
     else
       weight_dim <= weight_dim;
 end
@@ -173,34 +191,91 @@ always @(posedge clock or negedge reset_n) begin
 end
 assign k_itr_sel = ((weight_dim_itr+1) == weight_dim);
 
-/*----------------Matrices------------------*/
-// For input matrix
+/*----------------Read Address------------------*/
+// For input
 always @(posedge clock or negedge reset_n) begin
   if(!reset_n)
     input_read_address_r <= 0;
   else
-  if(load_input_zero)
-    input_read_address_r <= 0;
-  else if(input_col_itr_sel)
-    input_read_address_r <= (input_cols * k_itr) + 1'b1;
-  else
-    input_read_address_r <= input_read_address_r + 1'b1;
+    if(load_input_zero)
+      input_read_address_r <= 0;
+    else if(input_col_itr_sel)
+      input_read_address_r <= (input_cols * k_itr) + 1'b1;
+    else
+      input_read_address_r <= input_read_address_r + 1'b1;
 end
 assign dut__tb__sram_input_read_address = input_read_address_r;
 
-// For weight matrix
+// For weight
 always @(posedge clock) begin
   if(!reset_n)
     weight_read_address_r <= 0;
   else
-  if(load_weight_zero)
-    weight_read_address_r <= 0;
-  else if(weight_dim_itr_sel)
-    weight_read_address_r <= 1;
-  else
-    weight_read_address_r <= weight_read_address_r + 1'b1;
+    if(load_weight_zero)
+      weight_read_address_r <= 0;
+    else if(weight_dim_itr_sel)
+      weight_read_address_r <= 1;
+    else
+      weight_read_address_r <= weight_read_address_r + 1'b1;
 end
 assign dut__tb__sram_weight_read_address = weight_read_address_r;
+
+/*----------------Read SRAM Data------------------*/
+// For input
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    input_r <= 0;
+  else
+    if(input_r_enable)
+      input_r <= tb__dut__sram_input_read_data;
+    else
+      input_r <= input_r;
+end
+
+// For Weight
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    weight_r <= 0;
+  else
+    if(weight_r_enable)
+      weight_r <= tb__dut__sram_weight_read_data;
+    else
+      weight_r <= weight_r;
+end
+
+/*----------------Math------------------*/
+// For input
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    input <= 0;
+  else
+    if(input_enable)
+      input <= input_r;
+    else
+      input <= input;
+end
+
+// For weight
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    weight <= 0;
+  else
+    if(weight_enable)
+      weight <= weight_r;
+    else
+      weight <= weight;
+end
+
+// For accumulator
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    accum <= 0;
+  else
+    if(!accum_select)
+      accum <= 0;
+    else
+      accum <= accum;
+end
 
 DW_fp_mac_inst 
   FP_MAC ( 
@@ -211,6 +286,31 @@ DW_fp_mac_inst
   .z_inst(mac_result_z),
   .status_inst()
 );
+
+/*----------------Write SRAM Data------------------*/
+// Address
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    result_write_address_w <= 0;
+  else
+    if(write_enable)
+      result_write_address_w <= result_write_address_w + 1'b1;
+    else
+      result_write_address_w <= result_write_address_w;
+end
+assign dut__tb__sram_result_write_address = result_write_address_w;
+
+// Data
+always @(posedge clock or negedge reset_n) begin
+  if(!reset_n)
+    result_w <= 0;
+  else
+    if(write_enable)
+      result_w <= mac_result_z;
+    else
+      result_w <= result_w;
+end
+assign dut__tb__sram_result_write_data = result_w;
 
 endmodule
 
