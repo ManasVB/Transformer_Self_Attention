@@ -128,6 +128,9 @@ always @(*) begin
   load_input_zero = 1'b0;
   load_weight_zero = 1'b0;
 
+  input_r_enable = 1'b0;
+  weight_r_enable = 1'b0;
+
   input_rows_sel = 1'b1;
   input_cols_sel = 1'b1;
   weight_cols_sel = 1'b1;
@@ -137,6 +140,10 @@ always @(*) begin
   weight_dim_itr_sel = 1'b1;
   k_itr_sel = 1'b0;
 
+  input_enable = 1'b0;
+  weight_enable = 1'b0;
+  accum_select = 1'b0;  
+
   case (current_state)
     IDLE: begin
       if(dut_valid) begin
@@ -144,28 +151,57 @@ always @(*) begin
       end
       else begin
         set_dut_ready = 1'b1;
+        
         next_state = IDLE;
       end
     end
     S0: begin
       load_input_zero = 1'b1;
       load_weight_zero = 1'b1;
+
       next_state = S1;
     end
     S1: begin
       input_col_itr_sel = 1'b0;
       weight_dim_itr_sel = 1'b0;
+
+      input_r_enable = 1'b1;
+      weight_r_enable = 1'b1;
+
       next_state = S2;      
     end
     S2: begin
       input_col_itr_sel = ((input_col_itr+1) == input_cols);
       weight_dim_itr_sel = ((weight_dim_itr+1) == weight_dim);
       k_itr_sel = ((weight_dim_itr+1) == weight_dim);
+      
+      input_r_enable = 1'b1;
+      weight_r_enable = 1'b1;
+
       input_rows_sel = 1'b0;
       input_cols_sel = 1'b0;
       weight_cols_sel = 1'b0;
       weight_dim_sel = 1'b0;
+
       next_state = S3;      
+    end
+    S3: begin
+      input_col_itr_sel = ((input_col_itr+1) == input_cols);
+      weight_dim_itr_sel = ((weight_dim_itr+1) == weight_dim);
+      k_itr_sel = ((weight_dim_itr+1) == weight_dim);
+
+      input_r_enable = 1'b1;
+      weight_r_enable = 1'b1;
+
+      next_state = (k_itr == input_rows) ? S4 : S3;        
+    end
+    S4: begin
+      set_dut_ready = 1'b1;
+      next_state = IDLE;
+    end
+    default: begin
+      set_dut_ready = 1'b1;
+      next_state = IDLE;
     end
   endcase
 end
@@ -301,39 +337,39 @@ always @(posedge clock or negedge reset_n) begin
       weight_r <= weight_r;
 end
 
-/*----------------Math------------------*/
-// For input
-always @(posedge clock or negedge reset_n) begin
-  if(!reset_n)
-    input <= 0;
-  else
-    if(input_enable)
-      input <= input_r;
-    else
-      input <= input;
-end
+// /*----------------Math------------------*/
+// // For input
+// always @(posedge clock or negedge reset_n) begin
+//   if(!reset_n)
+//     input <= 0;
+//   else
+//     if(input_enable)
+//       input <= input_r;
+//     else
+//       input <= input;
+// end
 
-// For weight
-always @(posedge clock or negedge reset_n) begin
-  if(!reset_n)
-    weight <= 0;
-  else
-    if(weight_enable)
-      weight <= weight_r;
-    else
-      weight <= weight;
-end
+// // For weight
+// always @(posedge clock or negedge reset_n) begin
+//   if(!reset_n)
+//     weight <= 0;
+//   else
+//     if(weight_enable)
+//       weight <= weight_r;
+//     else
+//       weight <= weight;
+// end
 
-// For accumulator
-always @(posedge clock or negedge reset_n) begin
-  if(!reset_n)
-    accum <= 0;
-  else
-    if(!accum_select)
-      accum <= 0;
-    else
-      accum <= accum;
-end
+// // For accumulator
+// always @(posedge clock or negedge reset_n) begin
+//   if(!reset_n)
+//     accum <= 0;
+//   else
+//     if(accum_select)
+//       accum <= 0;
+//     else
+//       accum <= accum;
+// end
 
 DW_fp_mac_inst 
   FP_MAC ( 
@@ -345,30 +381,30 @@ DW_fp_mac_inst
   .status_inst()
 );
 
-/*----------------Write SRAM Data------------------*/
-// Address
-always @(posedge clock or negedge reset_n) begin
-  if(!reset_n)
-    result_write_address_w <= 0;
-  else
-    if(write_enable)
-      result_write_address_w <= result_write_address_w + 1'b1;
-    else
-      result_write_address_w <= result_write_address_w;
-end
-assign dut__tb__sram_result_write_address = result_write_address_w;
+// /*----------------Write SRAM Data------------------*/
+// // Address
+// always @(posedge clock or negedge reset_n) begin
+//   if(!reset_n)
+//     result_write_address_w <= 0;
+//   else
+//     if(write_enable)
+//       result_write_address_w <= result_write_address_w + 1'b1;
+//     else
+//       result_write_address_w <= result_write_address_w;
+// end
+// assign dut__tb__sram_result_write_address = result_write_address_w;
 
-// Data
-always @(posedge clock or negedge reset_n) begin
-  if(!reset_n)
-    result_w <= 0;
-  else
-    if(write_enable)
-      result_w <= mac_result_z;
-    else
-      result_w <= result_w;
-end
-assign dut__tb__sram_result_write_data = result_w;
+// // Data
+// always @(posedge clock or negedge reset_n) begin
+//   if(!reset_n)
+//     result_w <= 0;
+//   else
+//     if(write_enable)
+//       result_w <= mac_result_z;
+//     else
+//       result_w <= result_w;
+// end
+// assign dut__tb__sram_result_write_data = result_w;
 
 endmodule
 
