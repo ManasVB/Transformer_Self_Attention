@@ -46,6 +46,7 @@ reg set_dut_ready;
 reg enable_sram_address_r;
 reg [`SRAM_ADDR_RANGE     ] input_address_r;
 reg [`SRAM_ADDR_RANGE     ]  weight_address_r;
+reg [`SRAM_ADDR_RANGE     ]  result_address_w;
 
 reg enable_sram_data_r;
 reg input_read_diff;
@@ -66,19 +67,28 @@ reg [`SRAM_DATA_RANGE] weight_dim_itr;
 reg k_itr_sel;
 reg [`SRAM_DATA_RANGE] k_itr;
 
+reg compute_start;
+reg [`SRAM_DATA_RANGE] accum_result;
+wire [`SRAM_DATA_RANGE] mac_result_z;
+wire [2 : 0] inst_rnd;
+reg write_en;
+
+reg [1:0] last_state_counter;
+reg last_state_counter_sel;
+
 /*----------------------Control Logic------------------------*/
 `ifndef FSM_BIT_WIDTH
-  `define FSM_BIT_WIDTH 4
+  `define FSM_BIT_WIDTH 3
 `endif
 
 typedef enum logic [`FSM_BIT_WIDTH-1:0] {
-  IDLE  = `FSM_BIT_WIDTH'b0000,
-  S0  = `FSM_BIT_WIDTH'b0001,
-  S1  = `FSM_BIT_WIDTH'b0010,
-  S2  = `FSM_BIT_WIDTH'b0011,
-  S3  = `FSM_BIT_WIDTH'b0100,
-  S4  = `FSM_BIT_WIDTH'b0101,
-  S5  = `FSM_BIT_WIDTH'b0110
+  IDLE  = `FSM_BIT_WIDTH'b000,
+  READ_ADDRESS_START  = `FSM_BIT_WIDTH'b001,
+  SET_COUNT_ITRS  = `FSM_BIT_WIDTH'b010,
+  READ_DATA_START  = `FSM_BIT_WIDTH'b011,
+  COMPUTE_START  = `FSM_BIT_WIDTH'b100,
+  DO_COMPUTATION  = `FSM_BIT_WIDTH'b101,
+  LAST_TWO_VALUES  = `FSM_BIT_WIDTH'b110
 } e_states;
 
 e_states current_state, next_state;
@@ -112,14 +122,15 @@ always @(*) begin
   dimension_size_select = 1'b0;
   input_col_itr_sel = 1'b0;
   weight_dim_itr_sel = 1'b0;
-  // input_read_diff = 1'b0;
-  // weight_read_diff = 1'b0;
+  compute_start = 1'b0;
+  write_en = 1'b0;
+  last_state_counter_sel = 1'b0;
 
   case (current_state)
 
     IDLE: begin
       if(dut_valid) begin
-        next_state = S0;
+        next_state = READ_ADDRESS_START;
       end
       else begin
         set_dut_ready = 1'b1;
@@ -127,52 +138,55 @@ always @(*) begin
       end
     end
 
-    S0: begin
+    READ_ADDRESS_START: begin
       enable_sram_address_r = 1'b1;
-      next_state = S1;
+      next_state = SET_COUNT_ITRS;
     end
 
-    S1: begin
+    SET_COUNT_ITRS: begin
       input_col_itr_sel = 1'b1;
       weight_dim_itr_sel = 1'b1;
 
-      next_state = S2;
+      next_state = READ_DATA_START;
     end
 
-    S2: begin
+    READ_DATA_START: begin
       enable_sram_data_r = 1'b1;
       dimension_size_select = 1'b1;
       
-      next_state = S3;
+      next_state = COMPUTE_START;
     end
 
-    S3: begin
+    COMPUTE_START: begin
+      enable_sram_data_r = 1'b1;
+      compute_start = 1'b1;
+
+      next_state = DO_COMPUTATION;
+    end
+
+    DO_COMPUTATION: begin
       enable_sram_data_r = 1'b1;
       input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
       weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
 
-      // input_read_diff = ((input_col_itr + 1) == input_col_dim);
-      // weight_read_diff = ((weight_dim_itr + 1) == weight_matrix_dim);
+      compute_start = ((input_col_itr) == 1);
+      write_en = ((input_col_itr) == 1);
 
       k_itr_sel = ((weight_dim_itr + 2) == (weight_matrix_dim-1));
 
-      next_state = ((k_itr) == input_row_dim) ? S4: S3;
 
-      // $display("input row dim %x", input_row_dim);
-      // $display("input col dim %x", input_col_dim);
-      // $display("weight col dim %x", weight_col_dim);
-      // $display("weight matrix dim %x", weight_matrix_dim);
-
-      // $display("data %x",input_data_r);
-
-      // $display("data %x",input_col_itr);
-
-      // next_state = S4;
+      if((k_itr) == input_row_dim) begin
+        last_state_counter_sel = 1'b1;
+        next_state = LAST_TWO_VALUES;
+      end
+      else
+        next_state = DO_COMPUTATION;
     end
 
-    S4: begin
-      set_dut_ready = 1'b1;
-      next_state = IDLE;
+    LAST_TWO_VALUES: begin
+      enable_sram_data_r = 1'b1;
+      write_en = (last_state_counter == 1'b0);
+      next_state = (last_state_counter == 1'b0) ? IDLE : LAST_TWO_VALUES;
     end
 
     default: begin
@@ -290,16 +304,51 @@ always @(posedge clk or negedge reset_n) begin
 end
 
 /*----------------------MATH------------------------*/
+always @(posedge clk or negedge reset_n) begin
+  if(!reset_n || compute_complete)
+    accum_result <= 0;
+  else
+    if(compute_start)
+      accum_result <=0;
+    else
+      accum_result <= mac_result_z;
+end
+
+assign inst_rnd = 3'b0;
 DW_fp_mac_inst 
   FP_MAC ( 
-  .inst_a(tb__dut__sram_input_read_data),
-  .inst_b(tb__dut__sram_weight_read_data),
+  .inst_a(input_data_r),
+  .inst_b(weight_data_r),
   .inst_c(accum_result),
   .inst_rnd(inst_rnd),
   .z_inst(mac_result_z),
   .status_inst()
 );
 
+/*----------------------SRAM Write------------------------*/
+always @(posedge clk or negedge reset_n) begin
+  if(!reset_n || compute_complete)
+    last_state_counter <= 0;
+  else
+    if(last_state_counter_sel)
+      last_state_counter <=2;
+    else
+      last_state_counter <= last_state_counter - 1'b1;
+end
+
+always @(posedge clk or negedge reset_n) begin
+  if(!reset_n || compute_complete)
+    result_address_w <= 0;
+  else
+    if(write_en)
+      result_address_w <= result_address_w + 1'b1;
+    else
+      result_address_w <=  result_address_w;
+end
+
+assign dut__tb__sram_result_write_enable = (write_en) ? 1'b1 : 1'b0;
+assign dut__tb__sram_result_write_data = (write_en) ? mac_result_z : 32'bx;
+assign dut__tb__sram_result_write_address = result_address_w;
 
 endmodule
 
