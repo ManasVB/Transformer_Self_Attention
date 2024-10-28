@@ -38,8 +38,9 @@ module MyDesign(
 
 );
 
-// local variables declaration
+/*----------------------Local Variables Declaration------------------------*/
 
+// Two flags to for handshake logic
 reg compute_complete;
 reg set_dut_ready;
 
@@ -49,23 +50,21 @@ reg [`SRAM_ADDR_RANGE     ]  weight_address_r;
 reg [`SRAM_ADDR_RANGE     ]  result_address_w;
 
 reg enable_sram_data_r;
-reg input_read_diff;
-reg weight_read_diff;
 reg [`SRAM_DATA_RANGE] input_data_r;
 reg [`SRAM_DATA_RANGE] weight_data_r;
 
-reg dimension_size_select;
+reg dimension_size_select;  // Flag to load dimensions of both arrays in the below variables
 reg [`SRAM_DATA_RANGE] input_row_dim;
 reg [`SRAM_DATA_RANGE] input_col_dim;
 reg [`SRAM_DATA_RANGE] weight_col_dim;
 reg [`SRAM_DATA_RANGE] weight_matrix_dim;
 
 reg input_col_itr_sel;
-reg [`SRAM_DATA_RANGE] input_col_itr;
+reg [`SRAM_DATA_RANGE] input_col_itr; // Traverse column elements of a single row of input matrix 
 reg weight_dim_itr_sel;
-reg [`SRAM_DATA_RANGE] weight_dim_itr;
+reg [`SRAM_DATA_RANGE] weight_dim_itr;  // Traverse the entire weight matrix 
 reg k_itr_sel;
-reg [`SRAM_DATA_RANGE] k_itr;
+reg [`SRAM_DATA_RANGE] k_itr; // An iterator to keep count of how many times weight matrix is traversed.
 
 reg compute_start;
 reg [`SRAM_DATA_RANGE] accum_result;
@@ -73,7 +72,7 @@ wire [`SRAM_DATA_RANGE] mac_result_z;
 wire [2 : 0] inst_rnd;
 reg write_en;
 
-reg [1:0] last_state_counter;
+reg [1:0] last_state_counter; // Last two computations are done in the last state; keep a counter there
 reg last_state_counter_sel;
 
 /*----------------------Control Logic------------------------*/
@@ -93,7 +92,7 @@ typedef enum logic [`FSM_BIT_WIDTH-1:0] {
 
 e_states current_state, next_state;
 
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n)
     current_state <= IDLE;
   else
@@ -101,7 +100,7 @@ always @(posedge clk or negedge reset_n) begin
 end
 
 // Handshake logic
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n)
     compute_complete <= 0;
   else
@@ -125,6 +124,7 @@ always @(*) begin
   compute_start = 1'b0;
   write_en = 1'b0;
   last_state_counter_sel = 1'b0;
+  k_itr_sel = 1'b0;
 
   case (current_state)
 
@@ -174,7 +174,9 @@ always @(*) begin
 
       k_itr_sel = ((weight_dim_itr + 2) == (weight_matrix_dim-1));
 
-
+      /* k_itr determines if we should leave this state or not.
+      * If it equals to the #input_rows means we have traversed the 
+      * weight matrix input_rows times and are done now */
       if((k_itr) == input_row_dim) begin
         last_state_counter_sel = 1'b1;
         next_state = LAST_TWO_VALUES;
@@ -197,7 +199,7 @@ always @(*) begin
 end
 
 /*----------------------Read SRAM Address------------------------*/
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     input_address_r <= 0;
   else begin
@@ -211,7 +213,7 @@ always @(posedge clk or negedge reset_n) begin
 end
 assign dut__tb__sram_input_read_address = input_address_r;
 
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     weight_address_r <= 0;
   else begin
@@ -226,7 +228,7 @@ end
 assign dut__tb__sram_weight_read_address = weight_address_r;
 
 /*----------------------Read SRAM Data------------------------*/
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     input_data_r <= 0;
   else begin
@@ -237,7 +239,7 @@ always @(posedge clk or negedge reset_n) begin
   end
 end
 
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     weight_data_r <= 0;
   else begin
@@ -249,7 +251,7 @@ always @(posedge clk or negedge reset_n) begin
 end
 
 /*----------------------Dimension Count------------------------*/
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete) begin
     input_row_dim <= 0;
     input_col_dim <= 0;
@@ -273,7 +275,7 @@ always @(posedge clk or negedge reset_n) begin
 end
 
 /*----------------------Iterators------------------------*/
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     input_col_itr <= 0;
   else
@@ -283,7 +285,7 @@ always @(posedge clk or negedge reset_n) begin
       input_col_itr <= input_col_itr + 1'b1;
 end
 
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     weight_dim_itr <= 0;
   else
@@ -293,7 +295,7 @@ always @(posedge clk or negedge reset_n) begin
       weight_dim_itr <= weight_dim_itr + 1'b1;
 end
 
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     k_itr <= 0;
   else
@@ -304,7 +306,7 @@ always @(posedge clk or negedge reset_n) begin
 end
 
 /*----------------------MATH------------------------*/
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     accum_result <= 0;
   else
@@ -326,7 +328,7 @@ DW_fp_mac_inst
 );
 
 /*----------------------SRAM Write------------------------*/
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     last_state_counter <= 0;
   else
@@ -336,7 +338,7 @@ always @(posedge clk or negedge reset_n) begin
       last_state_counter <= last_state_counter - 1'b1;
 end
 
-always @(posedge clk or negedge reset_n) begin
+always @(posedge clk) begin
   if(!reset_n || compute_complete)
     result_address_w <= 0;
   else
