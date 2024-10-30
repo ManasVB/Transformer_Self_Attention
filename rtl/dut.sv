@@ -36,6 +36,12 @@ module MyDesign(
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_result_read_address  , 
   input  wire [`SRAM_DATA_RANGE     ]   tb__dut__sram_result_read_data          
 
+//scratchpad SRAM interface
+  output wire                           dut__tb__sram_scratchpad_write_enable  ,
+  output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_scratchpad_write_address ,
+  output wire [`SRAM_DATA_RANGE     ]   dut__tb__sram_scratchpad_write_data    ,
+  output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_scratchpad_read_address  , 
+  input  wire [`SRAM_DATA_RANGE     ]   tb__dut__sram_scratchpad_read_data          
 );
 
 /*----------------------Local Variables Declaration------------------------*/
