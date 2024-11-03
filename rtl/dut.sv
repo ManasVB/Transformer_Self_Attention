@@ -54,6 +54,7 @@ reg enable_sram_address_r;
 reg [`SRAM_ADDR_RANGE     ] input_address_r;
 reg [`SRAM_ADDR_RANGE     ]  weight_address_r;
 reg [`SRAM_ADDR_RANGE     ]  result_address_w;
+reg [`SRAM_ADDR_RANGE     ]  scratchpad_address_w;
 
 reg enable_sram_data_r;
 reg [`SRAM_DATA_RANGE] input_data_r;
@@ -76,6 +77,7 @@ reg compute_start;
 reg [`SRAM_DATA_RANGE] accum_result;
 wire [`SRAM_DATA_RANGE] mac_result_z;
 wire [2 : 0] inst_rnd;
+
 reg result_write_en;
 
 reg [1:0] last_state_counter; // Last two computations are done in the last state; keep a counter there
@@ -365,7 +367,21 @@ always @(posedge clk) begin
 end
 
 assign dut__tb__sram_result_write_enable = (result_write_en) ? 1'b1 : 1'b0;
-assign dut__tb__sram_result_write_data = (result_write_en) ? mac_result_z : 32'bx;
 assign dut__tb__sram_result_write_address = result_address_w;
+assign dut__tb__sram_result_write_data = (result_write_en) ? mac_result_z : 32'bx;
+
+always @(posedge clk) begin
+  if(!reset_n || compute_complete)
+    scratchpad_address_w <= 0;
+  else
+    if(dut__tb__sram_scratchpad_write_enable)
+      scratchpad_address_w <= scratchpad_address_w + 1'b1;
+    else
+      scratchpad_address_w <=  scratchpad_address_w;
+end
+
+assign dut__tb__sram_scratchpad_write_enable = ((result_address_w >=8 && result_address_w < 16) && input_col_itr == 1) ? 1'b1 : 1'b0;
+assign dut__tb__sram_scratchpad_write_address = scratchpad_address_w;
+assign dut__tb__sram_scratchpad_write_data = (dut__tb__sram_scratchpad_write_enable) ? mac_result_z : 32'bx;
 
 endmodule
