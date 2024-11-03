@@ -76,7 +76,7 @@ reg compute_start;
 reg [`SRAM_DATA_RANGE] accum_result;
 wire [`SRAM_DATA_RANGE] mac_result_z;
 wire [2 : 0] inst_rnd;
-reg write_en;
+reg result_write_en;
 
 reg [1:0] last_state_counter; // Last two computations are done in the last state; keep a counter there
 reg last_state_counter_sel;
@@ -132,7 +132,7 @@ always @(*) begin
   input_col_itr_sel = 1'b0;
   weight_dim_itr_sel = 1'b0;
   compute_start = 1'b0;
-  write_en = 1'b0;
+  result_write_en = 1'b0;
   last_state_counter_sel = 1'b0;
   input_row_itr_sel = 1'b0;
   which_weight_count_sel = 1'b0;
@@ -181,24 +181,9 @@ always @(*) begin
       weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
 
       compute_start = ((input_col_itr) == 1);
-      write_en = ((input_col_itr) == 1);
+      result_write_en = ((input_col_itr) == 1);
 
       input_row_itr_sel = ((weight_dim_itr + 2) == (weight_matrix_dim-1));
-
-      /* input_row_itr determines if we should leave this state or not.
-      * If it equals to the #input_rows means we have traversed the 
-      * weight matrix input_rows times and are done now */
-      // if(input_matrix_traversed) begin
-      //     which_weight_count_sel = 1'b1;
-      // end
-
-      // if(which_weight_count == 2 && input_matrix_traversed) begin
-      //   last_state_counter_sel = 1'b1;
-      //   next_state = LAST_TWO_VALUES;
-      // end
-      // else begin
-      //   next_state = DO_COMPUTATION;
-      // end
 
       if(input_matrix_traversed) begin
         if(which_weight_count == 2) begin
@@ -216,7 +201,7 @@ always @(*) begin
 
     LAST_TWO_VALUES: begin
       enable_sram_data_r = 1'b1;
-      write_en = (last_state_counter == 1'b0);
+      result_write_en = (last_state_counter == 1'b0);
       next_state = (last_state_counter == 1'b0) ? IDLE : LAST_TWO_VALUES;
     end
 
@@ -373,14 +358,14 @@ always @(posedge clk) begin
   if(!reset_n || compute_complete)
     result_address_w <= 0;
   else
-    if(write_en)
+    if(result_write_en)
       result_address_w <= result_address_w + 1'b1;
     else
       result_address_w <=  result_address_w;
 end
 
-assign dut__tb__sram_result_write_enable = (write_en) ? 1'b1 : 1'b0;
-assign dut__tb__sram_result_write_data = (write_en) ? mac_result_z : 32'bx;
+assign dut__tb__sram_result_write_enable = (result_write_en) ? 1'b1 : 1'b0;
+assign dut__tb__sram_result_write_data = (result_write_en) ? mac_result_z : 32'bx;
 assign dut__tb__sram_result_write_address = result_address_w;
 
 endmodule
