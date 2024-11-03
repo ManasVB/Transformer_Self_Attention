@@ -83,6 +83,8 @@ reg last_state_counter_sel;
 
 reg which_weight_count_sel;
 reg [1:0] which_weight_count;
+
+wire input_matrix_traversed;
 /*----------------------Control Logic------------------------*/
 `ifndef FSM_BIT_WIDTH
   `define FSM_BIT_WIDTH 3
@@ -186,13 +188,27 @@ always @(*) begin
       /* input_row_itr determines if we should leave this state or not.
       * If it equals to the #input_rows means we have traversed the 
       * weight matrix input_rows times and are done now */
-      if((input_row_itr) == input_row_dim) begin
-          which_weight_count_sel = 1'b1;
-      end
+      // if(input_matrix_traversed) begin
+      //     which_weight_count_sel = 1'b1;
+      // end
 
-      if(which_weight_count == 2 && (input_row_itr) == input_row_dim) begin
-        last_state_counter_sel = 1'b1;
-        next_state = LAST_TWO_VALUES;
+      // if(which_weight_count == 2 && input_matrix_traversed) begin
+      //   last_state_counter_sel = 1'b1;
+      //   next_state = LAST_TWO_VALUES;
+      // end
+      // else begin
+      //   next_state = DO_COMPUTATION;
+      // end
+
+      if(input_matrix_traversed) begin
+        if(which_weight_count == 2) begin
+          last_state_counter_sel = 1'b1;
+          next_state = LAST_TWO_VALUES;
+        end
+        else begin
+          which_weight_count_sel = 1'b1;
+          next_state = DO_COMPUTATION;
+        end
       end
       else
         next_state = DO_COMPUTATION;
@@ -328,6 +344,7 @@ always @(posedge clk) begin
       which_weight_count <= which_weight_count;
 end
 
+assign input_matrix_traversed = ((input_row_itr) == input_row_dim);
 /*----------------------MATH------------------------*/
 always @(posedge clk) begin
   if(!reset_n || compute_complete)
