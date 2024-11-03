@@ -87,19 +87,22 @@ reg which_weight_count_sel;
 reg [1:0] which_weight_count;
 
 wire input_matrix_traversed;
+
+reg do_score_computation;
 /*----------------------Control Logic------------------------*/
 `ifndef FSM_BIT_WIDTH
-  `define FSM_BIT_WIDTH 3
+  `define FSM_BIT_WIDTH 4
 `endif
 
 typedef enum logic [`FSM_BIT_WIDTH-1:0] {
-  IDLE  = `FSM_BIT_WIDTH'b000,
-  READ_ADDRESS_START  = `FSM_BIT_WIDTH'b001,
-  SET_COUNT_ITRS  = `FSM_BIT_WIDTH'b010,
-  READ_DATA_START  = `FSM_BIT_WIDTH'b011,
-  COMPUTE_START  = `FSM_BIT_WIDTH'b100,
-  DO_COMPUTATION  = `FSM_BIT_WIDTH'b101,
-  LAST_TWO_VALUES  = `FSM_BIT_WIDTH'b110
+  IDLE  = `FSM_BIT_WIDTH'b0000,
+  READ_ADDRESS_START  = `FSM_BIT_WIDTH'b0001,
+  SET_COUNT_ITRS  = `FSM_BIT_WIDTH'b0010,
+  READ_DATA_START  = `FSM_BIT_WIDTH'b0011,
+  COMPUTE_START  = `FSM_BIT_WIDTH'b0100,
+  QKV_COMPUTATION  = `FSM_BIT_WIDTH'b0101,
+  LAST_TWO_VALUES = `FSM_BIT_WIDTH'b0110,
+  S_COMPUTATION  = `FSM_BIT_WIDTH'b0111
 } e_states;
 
 e_states current_state, next_state;
@@ -138,6 +141,7 @@ always @(*) begin
   last_state_counter_sel = 1'b0;
   input_row_itr_sel = 1'b0;
   which_weight_count_sel = 1'b0;
+  do_score_computation = 1'b0;
 
   case (current_state)
 
@@ -174,10 +178,10 @@ always @(*) begin
       enable_sram_data_r = 1'b1;
       compute_start = 1'b1;
 
-      next_state = DO_COMPUTATION;
+      next_state = QKV_COMPUTATION;
     end
 
-    DO_COMPUTATION: begin
+    QKV_COMPUTATION: begin
       enable_sram_data_r = 1'b1;
       input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
       weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
@@ -194,17 +198,29 @@ always @(*) begin
         end
         else begin
           which_weight_count_sel = 1'b1;
-          next_state = DO_COMPUTATION;
+          next_state = QKV_COMPUTATION;
         end
       end
       else
-        next_state = DO_COMPUTATION;
+        next_state = QKV_COMPUTATION;
     end
 
     LAST_TWO_VALUES: begin
       enable_sram_data_r = 1'b1;
-      result_write_en = (last_state_counter == 1'b0);
-      next_state = (last_state_counter == 1'b0) ? IDLE : LAST_TWO_VALUES;
+
+      do_score_computation = (last_state_counter <= 1'b1);
+      // next_state = (last_state_counter == 1'b0) ? S_COMPUTATION : LAST_TWO_VALUES;
+      if(last_state_counter == 1'b0) begin
+        result_write_en = 1;
+        next_state = S_COMPUTATION;
+      end
+      else
+        next_state = LAST_TWO_VALUES;
+    end
+
+    S_COMPUTATION: begin
+      do_score_computation = 1'b1;
+      next_state = IDLE;
     end
 
     default: begin
@@ -227,7 +243,7 @@ always @(posedge clk) begin
       input_address_r <= input_address_r + 1'b1;
   end
 end
-assign dut__tb__sram_input_read_address = input_address_r;
+assign dut__tb__sram_input_read_address = (do_score_computation) ?  16'bx : input_address_r;
 
 always @(posedge clk) begin
   if(!reset_n || compute_complete)
@@ -241,7 +257,7 @@ always @(posedge clk) begin
       weight_address_r <= weight_address_r + 1'b1;
   end
 end
-assign dut__tb__sram_weight_read_address = weight_address_r;
+assign dut__tb__sram_weight_read_address = (do_score_computation) ? 16'bx : weight_address_r;
 
 /*----------------------Read SRAM Data------------------------*/
 always @(posedge clk) begin
@@ -280,6 +296,11 @@ always @(posedge clk) begin
       input_col_dim <= tb__dut__sram_input_read_data[15:0];
       weight_col_dim <= tb__dut__sram_weight_read_data[15:0];
       weight_matrix_dim <= tb__dut__sram_weight_read_data[15:0] * tb__dut__sram_weight_read_data[31:16];
+    end
+    else if(do_score_computation) begin
+      input_col_dim <= weight_col_dim;
+      weight_col_dim <= input_row_dim;
+      weight_matrix_dim <= input_row_dim * weight_col_dim;
     end
     else begin
       input_row_dim <= input_row_dim;
