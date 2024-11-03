@@ -14,7 +14,7 @@
 * REVISION HISTORY
 *    Date         Programmer        Description
 *    01/22/2024   Prasanth Prabu    TB for matrix multiplication
-*
+*    10/30/2024   George Li         Added attention matrix check
 ************************************************/
 `include "common.vh"
 
@@ -335,8 +335,13 @@ module tb_top();
     end
 
     $display("---------------- Checking the Score matrix result------------------ ",);
-    for (int key = 0; key < (num_of_row_result*num_of_row_result); key++) begin
-      compare_results(key + (3*num_of_row_result*num_of_col_result));
+	for (int key = (3*num_of_row_result*num_of_col_result); key < (3*num_of_row_result*num_of_col_result + num_of_row_result*num_of_row_result); key++) begin
+      compare_results(key);
+    end
+	
+	$display("---------------- Checking the Attention matrix result------------------ ",);
+	for (int key = (3*num_of_row_result*num_of_col_result + num_of_row_result*num_of_row_result); key < ((3*num_of_row_result*num_of_col_result + num_of_row_result*num_of_row_result)+num_of_row_result*num_of_col_result); key++) begin
+      compare_results(key);
     end
 
   endfunction : check_result
