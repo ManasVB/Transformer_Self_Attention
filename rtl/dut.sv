@@ -96,7 +96,7 @@ typedef enum logic [`FSM_BIT_WIDTH-1:0] {
   SET_COUNT_ITRS  = `FSM_BIT_WIDTH'b010,
   READ_DATA_START  = `FSM_BIT_WIDTH'b011,
   COMPUTE_START  = `FSM_BIT_WIDTH'b100,
-  DO_COMPUTATION  = `FSM_BIT_WIDTH'b101,
+  QKV_COMPUTATION  = `FSM_BIT_WIDTH'b101,
   LAST_TWO_VALUES  = `FSM_BIT_WIDTH'b110
 } e_states;
 
@@ -172,10 +172,10 @@ always @(*) begin
       enable_sram_data_r = 1'b1;
       compute_start = 1'b1;
 
-      next_state = DO_COMPUTATION;
+      next_state = QKV_COMPUTATION;
     end
 
-    DO_COMPUTATION: begin
+    QKV_COMPUTATION: begin
       enable_sram_data_r = 1'b1;
       input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
       weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
@@ -197,7 +197,7 @@ always @(*) begin
       //   next_state = LAST_TWO_VALUES;
       // end
       // else begin
-      //   next_state = DO_COMPUTATION;
+      //   next_state = QKV_COMPUTATION;
       // end
 
       if(input_matrix_traversed) begin
@@ -207,11 +207,11 @@ always @(*) begin
         end
         else begin
           which_weight_count_sel = 1'b1;
-          next_state = DO_COMPUTATION;
+          next_state = QKV_COMPUTATION;
         end
       end
       else
-        next_state = DO_COMPUTATION;
+        next_state = QKV_COMPUTATION;
     end
 
     LAST_TWO_VALUES: begin
@@ -293,6 +293,11 @@ always @(posedge clk) begin
       input_col_dim <= tb__dut__sram_input_read_data[15:0];
       weight_col_dim <= tb__dut__sram_weight_read_data[15:0];
       weight_matrix_dim <= tb__dut__sram_weight_read_data[15:0] * tb__dut__sram_weight_read_data[31:16];
+    end
+    else if(last_state_counter_sel) begin
+      input_col_dim <= weight_col_dim;
+      weight_col_dim <= input_row_dim;
+      weight_matrix_dim <= weight_col_dim * input_row_dim;
     end
     else begin
       input_row_dim <= input_row_dim;
