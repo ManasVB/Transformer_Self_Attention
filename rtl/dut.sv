@@ -78,7 +78,7 @@ reg compute_start;
 reg [`SRAM_DATA_RANGE] accum_result;
 wire [`SRAM_DATA_RANGE] mac_result_z;
 wire [2 : 0] inst_rnd;
-reg write_en;
+reg result_write_en;
 
 reg [1:0] last_state_counter; // Last two computations are done in the last state; keep a counter there
 reg start_score_compute;
@@ -139,7 +139,7 @@ always @(*) begin
   input_col_itr_sel = 1'b0;
   weight_dim_itr_sel = 1'b0;
   compute_start = 1'b0;
-  write_en = 1'b0;
+  result_write_en = 1'b0;
   start_score_compute = 1'b0;
   input_row_itr_sel = 1'b0;
   which_weight_count_sel = 1'b0;
@@ -190,7 +190,7 @@ always @(*) begin
       weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
 
       compute_start = ((input_col_itr) == 1);
-      write_en = ((input_col_itr) == 1);
+      result_write_en = ((input_col_itr) == 1);
 
       input_row_itr_sel = ((weight_dim_itr + 2) == (weight_matrix_dim-1));
 
@@ -229,7 +229,7 @@ always @(*) begin
       weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
       input_row_itr_sel = ((weight_dim_itr + 2) == (weight_matrix_dim-1));
       
-      write_en = ((input_col_itr) == 1);
+      result_write_en = ((input_col_itr) == 1);
       compute_start = ((input_col_itr) == 1);
 
       if(input_matrix_traversed) begin
@@ -415,15 +415,15 @@ always @(posedge clk) begin
   if(!reset_n || compute_complete)
     result_address_w <= 0;
   else
-    if(write_en)
+    if(result_write_en)
       result_address_w <= result_address_w + 1'b1;
     else
       result_address_w <=  result_address_w;
 end
 
-assign dut__tb__sram_result_write_enable = (write_en) ? 1'b1 : 1'b0;
+assign dut__tb__sram_result_write_enable = (result_write_en) ? 1'b1 : 1'b0;
 assign dut__tb__sram_result_write_address = result_address_w;
-assign dut__tb__sram_result_write_data = (write_en) ? mac_result_z : 32'bx;
+assign dut__tb__sram_result_write_data = (result_write_en) ? mac_result_z : 32'bx;
 
 always @(posedge clk) begin
   if(!reset_n || compute_complete)
@@ -435,7 +435,7 @@ always @(posedge clk) begin
       scratchpad_address_w <=  scratchpad_address_w;
 end
 
-assign dut__tb__sram_scratchpad_write_enable = ((result_address_w >= result_matrix_dim && result_address_w < (result_matrix_dim << 1))) && (input_col_itr == 1) ? 1'b1 : 1'b0;
+assign dut__tb__sram_scratchpad_write_enable = ((result_address_w >= result_matrix_dim && result_address_w < 3*result_matrix_dim) && (input_col_itr == 1)) ? 1'b1 : 1'b0;
 assign dut__tb__sram_scratchpad_write_address = scratchpad_address_w;
 assign dut__tb__sram_scratchpad_write_data = (dut__tb__sram_scratchpad_write_enable) ? mac_result_z : 32'bx;
 
