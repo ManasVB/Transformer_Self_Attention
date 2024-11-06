@@ -89,6 +89,7 @@ reg [1:0] which_weight_count;
 wire input_matrix_traversed;
 reg set_weight_count_zero;
 reg score_computation;
+reg attention_computation;
 /*----------------------Control Logic------------------------*/
 `ifndef FSM_BIT_WIDTH
   `define FSM_BIT_WIDTH 4
@@ -145,6 +146,7 @@ always @(*) begin
   which_weight_count_sel = 1'b0;
   set_weight_count_zero = 1'b0;
   score_computation = 1'b0;
+  attention_computation = 1'b0;
 
   case (current_state)
 
@@ -240,9 +242,34 @@ always @(*) begin
     end
 
     BUFFER_STATE_2: begin
-
       score_computation = 1'b1;
       enable_sram_data_r = 1'b1;
+
+      input_col_itr_sel = 1'b1;
+      weight_dim_itr_sel = 1'b1;
+      dimension_size_select = 2'b11;
+      set_weight_count_zero = 1'b1;
+
+      next_state = Z_COMPUTATION;
+    end
+
+    Z_COMPUTATION: begin
+      attention_computation = 1'b1;
+      enable_sram_data_r = 1'b1;
+
+      input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
+      weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
+      input_row_itr_sel = ((weight_dim_itr + 2) == (weight_matrix_dim-1));
+      
+      result_write_en = ((input_col_itr) == 1);
+      compute_start = ((input_col_itr) == 1);
+
+      if(input_matrix_traversed) begin
+        next_state = IDLE;
+      end
+      else
+        next_state = Z_COMPUTATION;
+      
       next_state = IDLE;
     end
     
@@ -296,7 +323,7 @@ always @(posedge clk) begin
     input_data_r <= 0;
   else begin
     if(enable_sram_data_r)
-      input_data_r <= (score_computation && (last_state_counter == 0)) ? tb__dut__sram_result_read_data : tb__dut__sram_input_read_data;
+      input_data_r <= ((score_computation || attention_computation) && (last_state_counter == 0)) ? tb__dut__sram_result_read_data : tb__dut__sram_input_read_data;
     else
       input_data_r <= input_data_r;
   end
@@ -307,7 +334,7 @@ always @(posedge clk) begin
     weight_data_r <= 0;
   else begin
     if(enable_sram_data_r)
-      weight_data_r <= (score_computation && (last_state_counter == 0)) ? tb__dut__sram_scratchpad_read_data : tb__dut__sram_weight_read_data;
+      weight_data_r <= ((score_computation || attention_computation) && (last_state_counter == 0)) ? tb__dut__sram_scratchpad_read_data : tb__dut__sram_weight_read_data;
     else
       weight_data_r <= weight_data_r;
   end
@@ -334,6 +361,10 @@ always @(posedge clk) begin
       input_col_dim <= weight_col_dim;
       weight_col_dim <= input_row_dim;
       weight_matrix_dim <= weight_col_dim * input_row_dim;
+    end
+    else if(dimension_size_select == 2'b11) begin
+      input_col_dim <= input_row_dim;
+      weight_col_dim <= input_col_dim;
     end
     else begin
       input_row_dim <= input_row_dim;
