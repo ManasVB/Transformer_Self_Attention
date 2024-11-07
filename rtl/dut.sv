@@ -91,6 +91,7 @@ reg set_weight_count_zero;
 
 reg s_addr_comp;
 reg s_data_comp;
+reg z_addr_comp;
 /*----------------------Control Logic------------------------*/
 `ifndef FSM_BIT_WIDTH
   `define FSM_BIT_WIDTH 4
@@ -148,6 +149,7 @@ always @(*) begin
   set_weight_count_zero = 1'b0;
   s_addr_comp = 1'b0;
   s_data_comp = 1'b0;
+  z_addr_comp = 1'b0;
 
   case (current_state)
 
@@ -254,7 +256,24 @@ always @(*) begin
       result_write_en = ((input_col_itr) == 1);
       compute_start = ((input_col_itr) == 1);
       
-      next_state = (last_state_counter == 1'b0) ? IDLE : BUFFER_STATE_2;
+      if (last_state_counter == 1'b0) begin
+        input_col_itr_sel = 1'b1;
+        weight_dim_itr_sel = 1'b1;
+        dimension_size_select = 2'b11;
+        set_weight_count_zero = 1'b1;
+        z_addr_comp = 1'b1;
+
+        next_state = Z_COMPUTATION;
+      end
+      else
+        next_state = BUFFER_STATE_2;
+    end
+
+    Z_COMPUTATION : begin
+      input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
+      weight_dim_itr_sel = ((weight_dim_itr+1) == weight_matrix_dim);
+      z_addr_comp = 1'b1;
+      next_state = IDLE;
     end
     
     default: begin
@@ -272,7 +291,9 @@ always @(posedge clk) begin
     if(enable_sram_address_r)
       input_address_r <= 0;
     else if(input_col_itr_sel)
-      if (s_addr_comp)
+      if(z_addr_comp)
+        input_address_r <= 2*result_matrix_dim  + (input_col_dim * input_row_itr);
+      else if (s_addr_comp)
         input_address_r <= input_col_dim * input_row_itr;
       else  
         input_address_r <= (input_col_dim * input_row_itr) + 1'b1;
@@ -280,8 +301,8 @@ always @(posedge clk) begin
       input_address_r <= input_address_r + 1'b1;
   end
 end
-assign dut__tb__sram_input_read_address = (s_addr_comp) ? 16'bx : input_address_r;
-assign dut__tb__sram_result_read_address = (s_addr_comp) ? input_address_r : 16'bx;
+assign dut__tb__sram_input_read_address = (s_addr_comp || z_addr_comp) ? 16'bx : input_address_r;
+assign dut__tb__sram_result_read_address = (s_addr_comp || z_addr_comp) ? input_address_r : 16'bx;
 
 always @(posedge clk) begin
   if(!reset_n || compute_complete)
@@ -290,7 +311,9 @@ always @(posedge clk) begin
     if(enable_sram_address_r )
       weight_address_r <= 0;
     else if(weight_dim_itr_sel)
-      if (s_addr_comp)
+      if(z_addr_comp)
+        weight_address_r <= result_matrix_dim;
+      else if (s_addr_comp)
         weight_address_r <= 0;
       else
         weight_address_r <= (weight_matrix_dim * which_weight_count) + 1;
@@ -298,8 +321,8 @@ always @(posedge clk) begin
       weight_address_r <= weight_address_r + 1'b1;
   end
 end
-assign dut__tb__sram_weight_read_address = (s_addr_comp) ? 16'bx : weight_address_r;
-assign dut__tb__sram_scratchpad_read_address = (s_addr_comp) ? weight_address_r : 16'bx;
+assign dut__tb__sram_weight_read_address = (s_addr_comp || z_addr_comp) ? 16'bx : weight_address_r;
+assign dut__tb__sram_scratchpad_read_address = (s_addr_comp || z_addr_comp) ? weight_address_r : 16'bx;
 
 /*----------------------Read SRAM Data------------------------*/
 always @(posedge clk) begin
