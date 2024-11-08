@@ -108,7 +108,8 @@ typedef enum logic [`FSM_BIT_WIDTH-1:0] {
   BUFFER_STATE_1  = `FSM_BIT_WIDTH'b0110,
   S_COMPUTATION = `FSM_BIT_WIDTH'b0111,
   BUFFER_STATE_2 = `FSM_BIT_WIDTH'b1000,
-  Z_COMPUTATION = `FSM_BIT_WIDTH'b1001
+  Z_COMPUTATION = `FSM_BIT_WIDTH'b1001,
+  LAST_TWO_STATES = `FSM_BIT_WIDTH'b1010
 } e_states;
 
 e_states current_state, next_state;
@@ -266,7 +267,7 @@ always @(*) begin
         z_addr_comp = 1'b1;
         enable_sram_address_r = 1'b1;
         z_weight_col_itr = 1'b1;
-
+        last_state_counter_sel = 1'b1;
         next_state = Z_COMPUTATION;
       end
       else
@@ -277,19 +278,28 @@ always @(*) begin
       input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
       weight_dim_itr_sel = ((input_col_itr+1) == input_col_dim);
       input_row_itr_sel = (((weight_dim_itr + 1) == weight_col_dim) && (input_col_itr+2) == input_col_dim);
-      z_weight_col_itr = (((weight_dim_itr + 1) == weight_col_dim) && (input_col_itr+2) == input_col_dim);
+      z_weight_col_itr = (((weight_dim_itr + 1) == weight_col_dim) && (input_col_itr+1) == input_col_dim);
       z_addr_comp = 1'b1;
       s_data_comp = 1'b1;
       enable_sram_data_r = 1'b1;
 
-      result_write_en = (((weight_dim_itr + 1) == weight_col_dim) && (input_col_itr+2) == input_col_dim);
-      compute_start = ((input_col_itr) == 1);
+      result_write_en = (last_state_counter !=1 && input_col_itr == 1);
+      compute_start = (input_col_itr == 1);
 
-      if(input_matrix_traversed)
-        next_state = IDLE;
+      if(input_matrix_traversed) begin
+        last_state_counter_sel = 1'b1;
+        next_state = LAST_TWO_STATES;
+      end
       else
         next_state = Z_COMPUTATION;
 
+    end
+
+    LAST_TWO_STATES: begin
+      enable_sram_data_r = 1'b1;
+      s_data_comp = 1'b1;
+      result_write_en = (input_col_itr == 1);
+      next_state = (last_state_counter == 1'b0) ? IDLE : LAST_TWO_STATES;
     end
     
     default: begin
