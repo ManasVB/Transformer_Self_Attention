@@ -61,18 +61,18 @@ reg [`SRAM_DATA_RANGE] input_data_r;
 reg [`SRAM_DATA_RANGE] weight_data_r;
 
 reg [1:0] dimension_size_select;  // Flag to load dimensions of both arrays in the below variables
-reg [`SRAM_DATA_RANGE] input_row_dim;
-reg [`SRAM_DATA_RANGE] input_col_dim;
-reg [`SRAM_DATA_RANGE] weight_col_dim;
-reg [`SRAM_DATA_RANGE] weight_matrix_dim;
-reg [`SRAM_DATA_RANGE] result_matrix_dim;
+reg [`SRAM_ADDR_RANGE] input_row_dim;
+reg [`SRAM_ADDR_RANGE] input_col_dim;
+reg [`SRAM_ADDR_RANGE] weight_col_dim;
+reg [`SRAM_ADDR_RANGE] weight_matrix_dim;
+reg [`SRAM_ADDR_RANGE] result_matrix_dim;
 
 reg input_col_itr_sel;
-reg [`SRAM_DATA_RANGE] input_col_itr; // Traverse column elements of a single row of input matrix 
+reg [`SRAM_ADDR_RANGE] input_col_itr; // Traverse column elements of a single row of input matrix 
 reg weight_dim_itr_sel;
-reg [`SRAM_DATA_RANGE] weight_dim_itr;  // Traverse the entire weight matrix 
+reg [`SRAM_ADDR_RANGE] weight_dim_itr;  // Traverse the entire weight matrix 
 reg input_row_itr_sel;
-reg [`SRAM_DATA_RANGE] input_row_itr; // An iterator to keep count of how many times weight matrix is traversed.
+reg [`SRAM_ADDR_RANGE] input_row_itr; // An iterator to keep count of how many times weight matrix is traversed.
 
 reg compute_start;
 reg [`SRAM_DATA_RANGE] accum_result;
@@ -90,7 +90,7 @@ wire input_matrix_traversed;
 reg set_weight_count_zero;
 
 reg s_addr_comp;
-reg s_data_comp;
+reg sz_data_comp;
 reg z_addr_comp;
 reg z_col_itr;
 /*----------------------Control Logic------------------------*/
@@ -150,7 +150,7 @@ always @(*) begin
   which_weight_count_sel = 1'b0;
   set_weight_count_zero = 1'b0;
   s_addr_comp = 1'b0;
-  s_data_comp = 1'b0;
+  sz_data_comp = 1'b0;
   z_addr_comp = 1'b0;
   z_col_itr = 1'b0;
 
@@ -231,7 +231,7 @@ always @(*) begin
 
     S_COMPUTATION: begin
       s_addr_comp = 1'b1;
-      s_data_comp = (last_state_counter == 0) ? 1'b1 : 1'b0;
+      sz_data_comp = (last_state_counter == 0) ? 1'b1 : 1'b0;
       enable_sram_data_r = 1'b1;
       
       input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
@@ -251,7 +251,7 @@ always @(*) begin
 
     BUFFER_STATE_2: begin
       s_addr_comp = 1'b1;
-      s_data_comp = 1'b1;
+      sz_data_comp = 1'b1;
       enable_sram_data_r = 1'b1;
 
       input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
@@ -278,7 +278,7 @@ always @(*) begin
 
       enable_sram_data_r = 1'b1;
       z_addr_comp = 1'b1;
-      s_data_comp = 1'b1;
+      sz_data_comp = 1'b1;
       
       input_col_itr_sel = ((input_col_itr+1) == input_col_dim);
       weight_dim_itr_sel = ((input_col_itr+1) == input_col_dim);
@@ -310,7 +310,7 @@ always @(*) begin
 
     LAST_TWO_VALUES: begin
       enable_sram_data_r = 1'b1;
-      s_data_comp = 1'b1;
+      sz_data_comp = 1'b1;
       if(input_row_dim == 1) begin
         result_write_en = 1'b1;
         next_state = IDLE;
@@ -384,7 +384,7 @@ always @(posedge clk) begin
     input_data_r <= 0;
   else begin
     if(enable_sram_data_r)
-      input_data_r <= (s_data_comp) ? tb__dut__sram_result_read_data : tb__dut__sram_input_read_data;
+      input_data_r <= (sz_data_comp) ? tb__dut__sram_result_read_data : tb__dut__sram_input_read_data;
     else
       input_data_r <= input_data_r;
   end
@@ -395,7 +395,7 @@ always @(posedge clk) begin
     weight_data_r <= 0;
   else begin
     if(enable_sram_data_r)
-      weight_data_r <= (s_data_comp) ? tb__dut__sram_scratchpad_read_data : tb__dut__sram_weight_read_data;
+      weight_data_r <= (sz_data_comp) ? tb__dut__sram_scratchpad_read_data : tb__dut__sram_weight_read_data;
     else
       weight_data_r <= weight_data_r;
   end
