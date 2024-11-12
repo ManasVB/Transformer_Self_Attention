@@ -68,11 +68,11 @@ reg [`SRAM_ADDR_RANGE] weight_matrix_dim;
 reg [`SRAM_ADDR_RANGE] result_matrix_dim;
 
 reg input_col_itr_sel;
-reg [`SRAM_ADDR_RANGE] input_col_itr; // Traverse column elements of a single row of input matrix 
+reg [`SRAM_ADDR_RANGE] input_col_itr;
 reg weight_dim_itr_sel;
-reg [`SRAM_ADDR_RANGE] weight_dim_itr;  // Traverse the entire weight matrix 
+reg [`SRAM_ADDR_RANGE] weight_dim_itr;
 reg input_row_itr_sel;
-reg [`SRAM_ADDR_RANGE] input_row_itr; // An iterator to keep count of how many times weight matrix is traversed.
+reg [`SRAM_ADDR_RANGE] input_row_itr;
 
 reg compute_start;
 reg [`SRAM_DATA_RANGE] accum_result;
