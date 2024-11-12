@@ -77,7 +77,6 @@ reg [`SRAM_ADDR_RANGE] input_row_itr; // An iterator to keep count of how many t
 reg compute_start;
 reg [`SRAM_DATA_RANGE] accum_result;
 wire [`SRAM_DATA_RANGE] mac_result_z;
-wire [2 : 0] inst_rnd;
 reg result_write_en;
 
 reg [1:0] last_state_counter; // Last two computations are done in the last state; keep a counter there
