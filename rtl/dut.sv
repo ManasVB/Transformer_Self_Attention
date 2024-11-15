@@ -18,30 +18,30 @@ module MyDesign(
 //input SRAM interface
   output wire                           dut__tb__sram_input_write_enable  ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_input_write_address ,
-  output wire [`SRAM_DATA_RANGE     ]   dut__tb__sram_input_write_data    ,
+  output wire signed [`SRAM_DATA_RANGE     ]   dut__tb__sram_input_write_data    ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_input_read_address  , 
-  input  wire [`SRAM_DATA_RANGE     ]   tb__dut__sram_input_read_data     ,     
+  input  wire signed [`SRAM_DATA_RANGE     ]   tb__dut__sram_input_read_data     ,     
 
 //weight SRAM interface
   output wire                           dut__tb__sram_weight_write_enable  ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_weight_write_address ,
-  output wire [`SRAM_DATA_RANGE     ]   dut__tb__sram_weight_write_data    ,
+  output wire signed [`SRAM_DATA_RANGE     ]   dut__tb__sram_weight_write_data    ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_weight_read_address  , 
-  input  wire [`SRAM_DATA_RANGE     ]   tb__dut__sram_weight_read_data     ,     
+  input  wire signed [`SRAM_DATA_RANGE     ]   tb__dut__sram_weight_read_data     ,     
 
 //result SRAM interface
   output wire                           dut__tb__sram_result_write_enable  ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_result_write_address ,
-  output wire [`SRAM_DATA_RANGE     ]   dut__tb__sram_result_write_data    ,
+  output wire signed [`SRAM_DATA_RANGE     ]   dut__tb__sram_result_write_data    ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_result_read_address  , 
-  input  wire [`SRAM_DATA_RANGE     ]   tb__dut__sram_result_read_data    ,      
+  input  wire signed [`SRAM_DATA_RANGE     ]   tb__dut__sram_result_read_data    ,      
 
 //scratchpad SRAM interface
   output wire                           dut__tb__sram_scratchpad_write_enable  ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_scratchpad_write_address ,
-  output wire [`SRAM_DATA_RANGE     ]   dut__tb__sram_scratchpad_write_data    ,
+  output wire signed [`SRAM_DATA_RANGE     ]   dut__tb__sram_scratchpad_write_data    ,
   output wire [`SRAM_ADDR_RANGE     ]   dut__tb__sram_scratchpad_read_address  , 
-  input  wire [`SRAM_DATA_RANGE     ]   tb__dut__sram_scratchpad_read_data          
+  input  wire signed [`SRAM_DATA_RANGE     ]   tb__dut__sram_scratchpad_read_data          
 );
 
 /*----------------------Local Variables Declaration------------------------*/
@@ -57,8 +57,8 @@ reg [`SRAM_ADDR_RANGE     ]  result_address_w;
 reg [`SRAM_ADDR_RANGE     ]  scratchpad_address_w;
 
 reg enable_sram_data_r;
-reg [`SRAM_DATA_RANGE] input_data_r;
-reg [`SRAM_DATA_RANGE] weight_data_r;
+reg signed [`SRAM_DATA_RANGE] input_data_r;
+reg signed [`SRAM_DATA_RANGE] weight_data_r;
 
 reg [1:0] dimension_size_select;  // Flag to load dimensions of both arrays in the below variables
 reg [`SRAM_ADDR_RANGE] input_row_dim;
@@ -75,8 +75,8 @@ reg input_row_itr_sel;
 reg [`SRAM_ADDR_RANGE] input_row_itr;
 
 reg compute_start;
-reg [`SRAM_DATA_RANGE] accum_result;
-wire [`SRAM_DATA_RANGE] mac_result_z;
+reg signed [`SRAM_DATA_RANGE] accum_result;
+wire signed [`SRAM_DATA_RANGE] mac_result_z;
 reg result_write_en;
 
 reg [1:0] last_state_counter; // Last two computations are done in the last state; keep a counter there
