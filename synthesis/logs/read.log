@@ -1,0 +1,192 @@
+#------------------------------------------------------------
+#
+# Basic Synthesis Script (TCL format)
+#                                  
+# Revision History                
+#   1/15/03  : Author Shane T. Gehring - from class example
+#   2/09/07  : Author Zhengtao Yu      - from class example
+#   12/14/07 : Author Ravi Jenkal      - updated to 180 nm & tcl
+#
+#------------------------------------------------------------
+#---------------------------------------------------------
+# Read in Verilog file and map (synthesize) onto a generic
+# library.
+# MAKE SURE THAT YOU CORRECT ALL WARNINGS THAT APPEAR
+# during the execution of the read command are fixed 
+# or understood to have no impact.
+# ALSO CHECK your latch/flip-flop list for unintended 
+# latches                                            
+#---------------------------------------------------------
+read_verilog -rtl $::env(RTL_FILES)
+Error: Required argument 'file_list' was not found (CMD-007)
+read_sverilog -rtl $::env(RTL_SV_FILES)
+Loading db file '/mnt/coe/workspace/ece/ece720-common/tech/nangate/NangateOpenCellLibrary_PDKv1_2_v2008_10/liberty/520/NangateOpenCellLibrary_PDKv1_2_v2008_10_slow_nldm.db'
+Loading db file '/mnt/apps/public/COE/synopsys_apps/syn/T-2022.03-SP4/libraries/syn/dw_foundation.sldb'
+Loading db file '/mnt/apps/public/COE/synopsys_apps/syn/T-2022.03-SP4/libraries/syn/gtech.db'
+Loading db file '/mnt/apps/public/COE/synopsys_apps/syn/T-2022.03-SP4/libraries/syn/standard.sldb'
+  Loading link library 'NangateOpenCellLibrary_PDKv1_2_v2008_10_slow_nldm'
+  Loading link library 'gtech'
+Loading sverilog file '/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'
+Running PRESTO HDLC
+Compiling source file /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv
+Opening include file /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/common.vh
+Warning:  /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv:414: signed to unsigned part selection occurs. (VER-318)
+Warning:  /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv:415: signed to unsigned part selection occurs. (VER-318)
+Warning:  /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv:416: signed to unsigned part selection occurs. (VER-318)
+Warning:  /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv:417: signed to unsigned part selection occurs. (VER-318)
+Warning:  /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv:418: signed to unsigned part selection occurs. (VER-318)
+Warning:  /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv:525: signed to unsigned conversion occurs. (VER-318)
+Warning:  /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv:539: signed to unsigned conversion occurs. (VER-318)
+Warning: Could not open default SVF file /mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/synthesis/svf/default.svf for writing.
+
+Statistics for case statements in always block at line 137 in file
+	'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'
+===============================================
+|           Line           |  full/ parallel  |
+===============================================
+|           156            |    auto/auto     |
+===============================================
+
+Inferred memory devices in process
+	in routine MyDesign line 116 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+|  current_state_reg  | Flip-flop |   4   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 124 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+================================================================================
+|    Register Name     |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+================================================================================
+| compute_complete_reg | Flip-flop |   1   |  N  | N  | N  | N  | N  | N  | N  |
+================================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 331 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+| input_address_r_reg | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 354 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+================================================================================
+|    Register Name     |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+================================================================================
+| weight_address_r_reg | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+================================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 381 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+|  input_data_r_reg   | Flip-flop |  32   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 392 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+|  weight_data_r_reg  | Flip-flop |  32   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 404 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+=================================================================================
+|     Register Name     |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+=================================================================================
+| result_matrix_dim_reg | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+|   input_row_dim_reg   | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+|   input_col_dim_reg   | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+|  weight_col_dim_reg   | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+| weight_matrix_dim_reg | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+=================================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 440 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+|  input_col_itr_reg  | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 450 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+| weight_dim_itr_reg  | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 468 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+|  input_row_itr_reg  | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 478 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+==================================================================================
+|     Register Name      |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+==================================================================================
+| which_weight_count_reg | Flip-flop |   2   |  Y  | N  | N  | N  | N  | N  | N  |
+==================================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 490 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+===============================================================================
+|    Register Name    |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+===============================================================================
+|  accum_result_reg   | Flip-flop |  32   |  Y  | N  | N  | N  | N  | N  | N  |
+===============================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 503 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+==================================================================================
+|     Register Name      |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+==================================================================================
+| last_state_counter_reg | Flip-flop |   2   |  Y  | N  | N  | N  | N  | N  | N  |
+==================================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 513 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+================================================================================
+|    Register Name     |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+================================================================================
+| result_address_w_reg | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+================================================================================
+
+Inferred memory devices in process
+	in routine MyDesign line 527 in file
+		'/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/dut.sv'.
+====================================================================================
+|      Register Name       |   Type    | Width | Bus | MB | AR | AS | SR | SS | ST |
+====================================================================================
+| scratchpad_address_w_reg | Flip-flop |  16   |  Y  | N  | N  | N  | N  | N  | N  |
+====================================================================================
+Presto compilation completed successfully.
+Current design is now '/mnt/ncsudrive/m/mbuzruk/564/proj/Transformer_Self_Attention/rtl/MyDesign.db:MyDesign'
+Loaded 1 design.
+Current design is 'MyDesign'.
+MyDesign
